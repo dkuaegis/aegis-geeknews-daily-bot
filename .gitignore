@@ -1,0 +1,11 @@
+.vscode/
+.idea/
+.claude/
+bin/
+
+.env
+.DS_Store
+repomix-output.xml
+*.old
+*.swp
+logo.png
