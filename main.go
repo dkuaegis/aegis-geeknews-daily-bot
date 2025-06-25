@@ -30,7 +30,7 @@ func main() {
 	}()
 
 	// Create and start scheduler
-	schedulerInstance, err := scheduler.StartScheduler(db, cfg.RSSFeedURL, cfg.DiscordWebhookURL)
+	schedulerInstance, err := scheduler.StartScheduler(db, cfg.RSSFeedURL, cfg.DiscordWebhookURL, cfg.CrawlCron, cfg.NotificationCron)
 	if err != nil {
 		log.Fatalf("Failed to start scheduler: %v", err)
 	}

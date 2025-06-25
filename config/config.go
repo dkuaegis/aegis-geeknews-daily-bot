@@ -17,6 +17,8 @@ type Config struct {
 	DBSSLMode        string
 	RSSFeedURL       string
 	DiscordWebhookURL string
+	CrawlCron        string
+	NotificationCron string
 }
 
 // Load loads configuration from environment variables
@@ -69,6 +71,16 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("DISCORD_WEBHOOK_URL environment variable is required")
 	}
 
+	crawlCron := os.Getenv("CRAWL_CRON")
+	if crawlCron == "" {
+		crawlCron = "59 * * * *" // default: every hour at 59 minutes
+	}
+
+	notificationCron := os.Getenv("NOTIFICATION_CRON")
+	if notificationCron == "" {
+		notificationCron = "0 3 * * *" // default: 12:00 KST (03:00 UTC)
+	}
+
 	return &Config{
 		DBHost:           dbHost,
 		DBPort:           dbPort,
@@ -78,5 +90,7 @@ func Load() (*Config, error) {
 		DBSSLMode:        dbSSLMode,
 		RSSFeedURL:       rssFeedURL,
 		DiscordWebhookURL: discordWebhookURL,
+		CrawlCron:        crawlCron,
+		NotificationCron: notificationCron,
 	}, nil
 }

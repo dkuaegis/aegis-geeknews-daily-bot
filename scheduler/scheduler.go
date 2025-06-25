@@ -72,8 +72,8 @@ func SendDiscordNotification(db *sqlx.DB, webhookURL string) error {
 	return nil
 }
 
-// StartScheduler starts the scheduler with hourly RSS crawling and daily Discord notifications
-func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL string) (gocron.Scheduler, error) {
+// StartScheduler starts the scheduler with configurable RSS crawling and Discord notifications
+func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL, crawlCron, notificationCron string) (gocron.Scheduler, error) {
 	// Set timezone to UTC
 	loc, _ := time.LoadLocation("UTC")
 
@@ -85,9 +85,9 @@ func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL string) (gocron.Schedule
 		return nil, err
 	}
 
-	// Add job to run every hour at the top of the hour
+	// Add job to run crawling based on configured cron expression
 	crawlJob, err := scheduler.NewJob(
-		gocron.CronJob("59 * * * *", false), // Every hour at the 59th minute
+		gocron.CronJob(crawlCron, false), // Configurable cron expression
 		gocron.NewTask(func() {
 			if err := CrawlAndSave(db, rssFeedURL); err != nil {
 				log.Printf("Scheduled crawling failed: %v", err)
@@ -98,9 +98,9 @@ func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL string) (gocron.Schedule
 		return nil, err
 	}
 
-	// Add job to run daily at 00:00 UTC (09:00 KST) for Discord notifications
+	// Add job to run Discord notifications based on configured cron expression
 	discordJob, err := scheduler.NewJob(
-		gocron.CronJob("0 0 * * *", false), // Daily at 00:00 UTC
+		gocron.CronJob(notificationCron, false), // Configurable cron expression
 		gocron.NewTask(func() {
 			if err := SendDiscordNotification(db, webhookURL); err != nil {
 				log.Printf("Discord notification failed: %v", err)
@@ -111,9 +111,9 @@ func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL string) (gocron.Schedule
 		return nil, err
 	}
 
-	log.Printf("RSS crawling job created with ID: %s", crawlJob.ID().String())
-	log.Printf("Discord notification job created with ID: %s", discordJob.ID().String())
-	log.Println("Scheduler configured. RSS crawling will run every hour, Discord notifications daily at 09:00 KST (00:00 UTC).")
+	log.Printf("RSS crawling job created with ID: %s (cron: %s)", crawlJob.ID().String(), crawlCron)
+	log.Printf("Discord notification job created with ID: %s (cron: %s)", discordJob.ID().String(), notificationCron)
+	log.Printf("Scheduler configured. RSS crawling: %s, Discord notifications: %s", crawlCron, notificationCron)
 
 	return scheduler, nil
 }
