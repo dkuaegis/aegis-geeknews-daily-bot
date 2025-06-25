@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/dkuaegis/aegis-geeknews-daily-bot/config"
 	"github.com/dkuaegis/aegis-geeknews-daily-bot/database"
@@ -9,34 +10,43 @@ import (
 )
 
 func main() {
-	log.Println("GeekNews Daily Bot starting...")
+	// Setup structured logging with JSON format
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
+	slog.Info("GeekNews Daily Bot starting...")
 
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
-	log.Printf("Configuration loaded - RSS URL: %s", cfg.RSSFeedURL)
+	slog.Info("Configuration loaded", "rss_url", cfg.RSSFeedURL)
 
 	// Connect to database
 	db, err := database.Connect(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			log.Printf("Error closing database connection: %v", err)
+			slog.Error("Error closing database connection", "error", err)
 		}
 	}()
 
 	// Create and start scheduler
 	schedulerInstance, err := scheduler.StartScheduler(db, cfg.RSSFeedURL, cfg.DiscordWebhookURL, cfg.CrawlCron, cfg.NotificationCron)
 	if err != nil {
-		log.Fatalf("Failed to start scheduler: %v", err)
+		slog.Error("Failed to start scheduler", "error", err)
+		os.Exit(1)
 	}
 	defer func() {
 		if err := schedulerInstance.Shutdown(); err != nil {
-			log.Printf("Error shutting down scheduler: %v", err)
+			slog.Error("Error shutting down scheduler", "error", err)
 		}
 	}()
 
@@ -44,6 +54,6 @@ func main() {
 	schedulerInstance.Start()
 
 	// Keep the program running
-	log.Println("GeekNews Daily Bot is running. Press Ctrl+C to stop.")
+	slog.Info("GeekNews Daily Bot is running. Press Ctrl+C to stop.")
 	select {} // Block forever
 }

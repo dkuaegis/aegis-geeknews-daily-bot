@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -28,7 +29,7 @@ func Load() (*Config, error) {
 	if env != "production" {
 		if err := godotenv.Load(); err != nil {
 			// Don't fail if .env file doesn't exist in non-production
-			fmt.Printf("Warning: Could not load .env file: %v\n", err)
+			slog.Warn("Could not load .env file", "error", err)
 		}
 	}
 	dbHost := os.Getenv("DB_HOST")

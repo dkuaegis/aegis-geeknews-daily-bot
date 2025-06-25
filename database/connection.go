@@ -2,7 +2,7 @@ package database
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -26,9 +26,9 @@ func Connect(host, port, user, password, dbname, sslmode string) (*sqlx.DB, erro
 	// Log current database name for debugging
 	var currentDB string
 	if err := db.Get(&currentDB, "SELECT current_database()"); err != nil {
-		log.Printf("Warning: Could not get current database name: %v", err)
+		slog.Warn("Could not get current database name", "error", err)
 	} else {
-		log.Printf("Successfully connected to database: %s", currentDB)
+		slog.Info("Successfully connected to database", "database", currentDB)
 	}
 
 	return db, nil

@@ -1,7 +1,7 @@
 package database
 
 import (
-	"log"
+	"log/slog"
 	"sort"
 
 	"github.com/dkuaegis/aegis-geeknews-daily-bot/models"
@@ -11,7 +11,7 @@ import (
 // SaveNewsEntries saves news entries to database using upsert
 func SaveNewsEntries(db *sqlx.DB, entries []models.Entry) error {
 	if len(entries) == 0 {
-		log.Println("No entries to save")
+		slog.Info("No entries to save")
 		return nil
 	}
 
@@ -38,14 +38,14 @@ func SaveNewsEntries(db *sqlx.DB, entries []models.Entry) error {
 
 		result, err := db.NamedExec(query, newsEntry)
 		if err != nil {
-			log.Printf("Error saving entry %s: %v", newsEntry.URL, err)
+			slog.Error("Error saving entry", "url", newsEntry.URL, "error", err)
 			errorCount++
 			continue
 		}
 
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
-			log.Printf("Error getting rows affected for entry %s: %v", newsEntry.URL, err)
+			slog.Error("Error getting rows affected for entry", "url", newsEntry.URL, "error", err)
 			continue
 		}
 
@@ -56,7 +56,7 @@ func SaveNewsEntries(db *sqlx.DB, entries []models.Entry) error {
 		}
 	}
 
-	log.Printf("Database operation completed: %d new entries saved, %d duplicates skipped, %d errors", savedCount, skippedCount, errorCount)
+	slog.Info("Database operation completed", "saved", savedCount, "skipped", skippedCount, "errors", errorCount)
 
 	return nil
 }

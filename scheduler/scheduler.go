@@ -1,7 +1,7 @@
 package scheduler
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/dkuaegis/aegis-geeknews-daily-bot/crawler"
@@ -13,47 +13,47 @@ import (
 
 // CrawlAndSave performs the RSS crawling and saves to database
 func CrawlAndSave(db *sqlx.DB, rssFeedURL string) error {
-	log.Println("Starting RSS crawling...")
+	slog.Info("Starting RSS crawling...")
 
 	// Crawl RSS feed
 	feed, err := crawler.CrawlRSSFeed(rssFeedURL)
 	if err != nil {
-		log.Printf("RSS crawling failed: %v", err)
+		slog.Error("RSS crawling failed", "error", err)
 		return err
 	}
 
-	log.Printf("Crawled %d entries from RSS feed", len(feed.Entries))
+	slog.Info("Crawled entries from RSS feed", "count", len(feed.Entries))
 
 	// Save to database
 	err = database.SaveNewsEntries(db, feed.Entries)
 	if err != nil {
-		log.Printf("Failed to save entries to database: %v", err)
+		slog.Error("Failed to save entries to database", "error", err)
 		return err
 	}
 
-	log.Printf("Successfully completed RSS crawling and saved %d entries to database", len(feed.Entries))
+	slog.Info("Successfully completed RSS crawling and saved entries to database", "count", len(feed.Entries))
 	return nil
 }
 
 func SendDiscordNotification(db *sqlx.DB, webhookURL string) error {
-	log.Println("Starting Discord notification...")
+	slog.Info("Starting Discord notification...")
 
 	entries, err := database.GetUnsentNewsEntries(db)
 	if err != nil {
-		log.Printf("Failed to get unsent news entries: %v", err)
+		slog.Error("Failed to get unsent news entries", "error", err)
 		return err
 	}
 
 	if len(entries) == 0 {
-		log.Println("No unsent news entries found")
+		slog.Info("No unsent news entries found")
 		return nil
 	}
 
-	log.Printf("Found %d unsent news entries", len(entries))
+	slog.Info("Found unsent news entries", "count", len(entries))
 
 	err = discord.SendNewsToDiscord(webhookURL, entries)
 	if err != nil {
-		log.Printf("Failed to send Discord notification: %v", err)
+		slog.Error("Failed to send Discord notification", "error", err)
 		return err
 	}
 
@@ -64,11 +64,11 @@ func SendDiscordNotification(db *sqlx.DB, webhookURL string) error {
 
 	err = database.MarkNewsAsSent(db, newsIDs)
 	if err != nil {
-		log.Printf("Failed to mark news as sent: %v", err)
+		slog.Error("Failed to mark news as sent", "error", err)
 		return err
 	}
 
-	log.Printf("Successfully sent %d news entries to Discord", len(entries))
+	slog.Info("Successfully sent news entries to Discord", "count", len(entries))
 	return nil
 }
 
@@ -90,7 +90,7 @@ func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL, crawlCron, notification
 		gocron.CronJob(crawlCron, false), // Configurable cron expression
 		gocron.NewTask(func() {
 			if err := CrawlAndSave(db, rssFeedURL); err != nil {
-				log.Printf("Scheduled crawling failed: %v", err)
+				slog.Error("Scheduled crawling failed", "error", err)
 			}
 		}),
 	)
@@ -103,7 +103,7 @@ func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL, crawlCron, notification
 		gocron.CronJob(notificationCron, false), // Configurable cron expression
 		gocron.NewTask(func() {
 			if err := SendDiscordNotification(db, webhookURL); err != nil {
-				log.Printf("Discord notification failed: %v", err)
+				slog.Error("Discord notification failed", "error", err)
 			}
 		}),
 	)
@@ -111,9 +111,9 @@ func StartScheduler(db *sqlx.DB, rssFeedURL, webhookURL, crawlCron, notification
 		return nil, err
 	}
 
-	log.Printf("RSS crawling job created with ID: %s (cron: %s)", crawlJob.ID().String(), crawlCron)
-	log.Printf("Discord notification job created with ID: %s (cron: %s)", discordJob.ID().String(), notificationCron)
-	log.Printf("Scheduler configured. RSS crawling: %s, Discord notifications: %s", crawlCron, notificationCron)
+	slog.Info("RSS crawling job created", "job_id", crawlJob.ID().String(), "cron", crawlCron)
+	slog.Info("Discord notification job created", "job_id", discordJob.ID().String(), "cron", notificationCron)
+	slog.Info("Scheduler configured", "crawl_cron", crawlCron, "notification_cron", notificationCron)
 
 	return scheduler, nil
 }
